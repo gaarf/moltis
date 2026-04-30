@@ -53,10 +53,13 @@ export async function copyToClipboard(
 		el.style.position = "fixed";
 		el.style.opacity = "0";
 		document.body.appendChild(el);
-		el.select();
-		const ok = document.execCommand("copy");
-		document.body.removeChild(el);
-		return ok ? onSuccess() : onFail();
+		try {
+			el.select();
+			const ok = document.execCommand("copy");
+			return ok ? onSuccess() : onFail();
+		} finally {
+			document.body.removeChild(el);
+		}
 	} catch {
 		return onFail();
 	}
