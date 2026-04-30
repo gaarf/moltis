@@ -86,7 +86,7 @@ let vadSourceNode: MediaStreamAudioSourceNode | null = null;
 let vadMonitorMuteStart = 0;
 
 function isSttEnabled(): boolean {
-	return gon.get("stt_enabled") === true;
+	return gon.get("stt_enabled") !== false;
 }
 
 /** Check if STT is available and enable/disable buttons. */

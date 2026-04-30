@@ -100,7 +100,7 @@ export function appendMessageActions(ctx: MessageActionContext): void {
 	bar.appendChild(retryBtn);
 
 	// ── Voice button ─────────────────────────────────────────
-	if (ctx.text && !ctx.hasAudio && gon.get("tts_enabled") === true) {
+	if (ctx.text && !ctx.hasAudio && gon.get("tts_enabled") !== false) {
 		const voiceBtn = actionButton("icon-microphone", "Voice it");
 		voiceBtn.addEventListener("click", async () => {
 			const params: Record<string, unknown> = { key: sessionKey };
