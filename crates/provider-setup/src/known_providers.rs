@@ -257,6 +257,16 @@ pub fn known_providers() -> Vec<KnownProvider> {
             key_optional: false,
             local_only: false,
         },
+        KnownProvider {
+            name: "zen",
+            display_name: "Zen (opencode.ai)",
+            auth_type: AuthType::ApiKey,
+            env_key: Some("ZEN_API_KEY"),
+            default_base_url: Some("https://opencode.ai/zen/v1"),
+            requires_model: false,
+            key_optional: false,
+            local_only: false,
+        },
     ];
 
     // Add local-llm provider when the local-llm feature is enabled

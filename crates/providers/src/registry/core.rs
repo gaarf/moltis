@@ -250,6 +250,24 @@ pub async fn fetch_discoverable_models(
         }
     }
 
+    // ── Zen (opencode.ai) ─────────────────────────────────────────────
+    if filter_matches("zen")
+        && config.is_enabled("zen")
+        && !cfg!(test)
+        && let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides)
+        && should_fetch_models(config, "zen")
+    {
+        let base_url = config
+            .get("zen")
+            .and_then(|e| e.base_url.clone())
+            .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
+            .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
+        tasks.push((
+            "zen".into(),
+            Box::pin(crate::zen::fetch_models_from_api(key, base_url)),
+        ));
+    }
+
     // ── Custom providers ──────────────────────────────────────────────
     for (name, entry) in &config.providers {
         if !name.starts_with("custom-") || !entry.enabled {
@@ -861,6 +879,8 @@ impl ProviderRegistry {
             reg.register_kimi_code_providers(config, env_overrides);
         }
 
+        reg.register_zen_providers(config, env_overrides, prefetched);
+
         // Local GGUF providers (no API key needed, model runs locally)
         #[cfg(feature = "local-llm")]
         {
@@ -998,6 +1018,23 @@ impl ProviderRegistry {
                     openai::start_model_discovery(api_key.clone(), base_url.clone()),
                 ));
             }
+        }
+
+        // ── Zen (opencode.ai) ────────────────────────────────────────────
+        if config.is_enabled("zen")
+            && !cfg!(test)
+            && let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides)
+            && should_fetch_models(config, "zen")
+        {
+            let base_url = config
+                .get("zen")
+                .and_then(|e| e.base_url.clone())
+                .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
+                .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
+            pending.push((
+                "zen".into(),
+                crate::zen::start_model_discovery(key, base_url),
+            ));
         }
 
         // ── OpenAI Codex ─────────────────────────────────────────────────

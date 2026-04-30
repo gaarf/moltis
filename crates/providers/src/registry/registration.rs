@@ -30,7 +30,7 @@ use crate::openai_codex;
 #[allow(unused_imports)]
 use crate::{
     anthropic, async_openai_provider, config_helpers::*, discovered_model::*, genai_provider,
-    model_capabilities::*, model_catalogs::*, model_id::*, ollama::*, openai,
+    model_capabilities::*, model_catalogs::*, model_id::*, ollama::*, openai, zen,
 };
 impl ProviderRegistry {
     /// Register models from a [`RediscoveryResult`], skipping those already
@@ -1089,6 +1089,64 @@ impl ProviderRegistry {
             tracing::info!(
                 provider = %name,
                 "registered custom OpenAI-compatible provider"
+            );
+        }
+    }
+
+    pub(crate) fn register_zen_providers(
+        &mut self,
+        config: &ProvidersConfig,
+        env_overrides: &HashMap<String, String>,
+        prefetched: &HashMap<String, Vec<DiscoveredModel>>,
+    ) {
+        if !config.is_enabled("zen") {
+            return;
+        }
+        let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides) else {
+            return;
+        };
+
+        let base_url = config
+            .get("zen")
+            .and_then(|e| e.base_url.clone())
+            .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
+            .unwrap_or_else(|| zen::ZEN_DEFAULT_BASE_URL.into());
+
+        let alias = config.get("zen").and_then(|e| e.alias.clone());
+        let provider_label = alias.unwrap_or_else(|| "zen".into());
+
+        let preferred = configured_models_for_provider(config, "zen");
+        let discovered = if should_fetch_models(config, "zen") {
+            match prefetched.get("zen") {
+                Some(live) => live.clone(),
+                None => catalog_to_discovered(zen::ZEN_MODELS, 2),
+            }
+        } else {
+            catalog_to_discovered(zen::ZEN_MODELS, 2)
+        };
+        let models = merge_preferred_and_discovered_models(preferred, discovered);
+
+        for model in models {
+            if self.has_provider_model(&provider_label, &model.id) {
+                continue;
+            }
+            let provider: Arc<dyn LlmProvider> = Arc::new(zen::ZenProvider::new(
+                key.clone(),
+                model.id.clone(),
+                base_url.clone(),
+            ));
+            self.register(
+                ModelInfo {
+                    id: model.id.clone(),
+                    provider: provider_label.clone(),
+                    display_name: model.display_name.clone(),
+                    created_at: model.created_at,
+                    recommended: model.recommended,
+                    capabilities: model
+                        .capabilities
+                        .unwrap_or_else(|| ModelCapabilities::infer(&model.id)),
+                },
+                provider,
             );
         }
     }
