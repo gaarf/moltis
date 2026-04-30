@@ -19,11 +19,7 @@ use {
     tokio_stream::Stream,
 };
 
-use crate::{
-    anthropic::AnthropicProvider,
-    discovered_model::DiscoveredModel,
-    openai::{self, OpenAiProvider},
-};
+use crate::{anthropic::AnthropicProvider, openai::OpenAiProvider};
 
 pub const ZEN_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/v1";
 
@@ -197,22 +193,6 @@ impl LlmProvider for ZenProvider {
     async fn model_metadata(&self) -> anyhow::Result<ModelMetadata> {
         self.inner.model_metadata().await
     }
-}
-
-/// Fetch live models from `GET /zen/v1/models` (OpenAI-compatible endpoint).
-pub async fn fetch_models_from_api(
-    api_key: Secret<String>,
-    base_url: String,
-) -> anyhow::Result<Vec<DiscoveredModel>> {
-    openai::fetch_models_from_api(api_key, base_url).await
-}
-
-/// Spawn a background thread to fetch Zen models and return a receiver.
-pub fn start_model_discovery(
-    api_key: Secret<String>,
-    base_url: String,
-) -> std::sync::mpsc::Receiver<anyhow::Result<Vec<DiscoveredModel>>> {
-    openai::start_model_discovery(api_key, base_url)
 }
 
 #[cfg(test)]

@@ -1119,12 +1119,22 @@ impl ProviderRegistry {
         let discovered = if should_fetch_models(config, "zen") {
             match prefetched.get("zen") {
                 Some(live) => live.clone(),
+                // Live fetch was requested but produced no result — fall back to
+                // the static catalog so the provider is still usable.
                 None => catalog_to_discovered(zen::ZEN_MODELS, 2),
             }
         } else {
-            catalog_to_discovered(zen::ZEN_MODELS, 2)
+            // Discovery explicitly disabled: only register models the user
+            // pinned in [providers.zen] models = [...]. Consistent with how
+            // other built-in providers behave when fetch_models = false.
+            Vec::new()
         };
         let models = merge_preferred_and_discovered_models(preferred, discovered);
+
+        if models.is_empty() {
+            tracing::debug!("zen: no models to register (discovery disabled and no pinned models)");
+            return;
+        }
 
         let global_cw = self.global_cw_overrides.clone();
         let provider_cw = config
@@ -1132,6 +1142,7 @@ impl ProviderRegistry {
             .map(|e| extract_cw_overrides(&e.model_overrides))
             .unwrap_or_default();
 
+        let mut added = 0usize;
         for model in models {
             if self.has_provider_model(&provider_label, &model.id) {
                 continue;
@@ -1156,7 +1167,10 @@ impl ProviderRegistry {
                 },
                 provider,
             );
+            added += 1;
         }
+
+        tracing::info!(model_count = added, "registered Zen (opencode.ai) provider");
     }
 
     pub fn get(&self, model_id: &str) -> Option<Arc<dyn LlmProvider>> {

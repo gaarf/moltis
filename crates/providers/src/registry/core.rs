@@ -262,9 +262,10 @@ pub async fn fetch_discoverable_models(
             .and_then(|e| e.base_url.clone())
             .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
             .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
+        // Zen exposes an OpenAI-compatible /models endpoint.
         tasks.push((
             "zen".into(),
-            Box::pin(crate::zen::fetch_models_from_api(key, base_url)),
+            Box::pin(openai::fetch_models_from_api(key, base_url)),
         ));
     }
 
@@ -1031,10 +1032,8 @@ impl ProviderRegistry {
                 .and_then(|e| e.base_url.clone())
                 .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
                 .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
-            pending.push((
-                "zen".into(),
-                crate::zen::start_model_discovery(key, base_url),
-            ));
+            // Zen exposes an OpenAI-compatible /models endpoint.
+            pending.push(("zen".into(), openai::start_model_discovery(key, base_url)));
         }
 
         // ── OpenAI Codex ─────────────────────────────────────────────────
