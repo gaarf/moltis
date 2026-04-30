@@ -23,6 +23,7 @@ import { routes } from "../routes";
 import { bindSandboxImageEvents, bindSandboxToggleEvents, updateSandboxImageUI, updateSandboxUI } from "../sandbox";
 import { switchSession } from "../sessions";
 import * as S from "../state";
+import { copyToClipboard } from "../ui";
 import { initVadButton, initVoiceInput, teardownVoiceInput } from "../voice-input";
 import {
 	chatAutoResize,
@@ -55,7 +56,6 @@ import {
 	slashHideMenu,
 	slashInjectStyles,
 } from "./chat/slash-commands";
-import { copyToClipboard } from "../ui";
 
 // ── Module state ─────────────────────────────────────────────
 let promptMemoryToolbarRequestId = 0;

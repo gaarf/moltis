@@ -145,7 +145,6 @@ function showToast(message: string, type: string): void {
 	}, 4000);
 }
 
-
 async function generateToken(): Promise<void> {
 	generatingToken.value = true;
 	const name = deviceName.value.trim() || null;

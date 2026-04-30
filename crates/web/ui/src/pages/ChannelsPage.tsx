@@ -266,7 +266,6 @@ function ChannelStorageNotice({ compact = false }: ChannelStorageNoticeProps): V
 	);
 }
 
-
 // ── Matrix info row ──────────────────────────────────────────
 
 interface MatrixInfoRowProps {

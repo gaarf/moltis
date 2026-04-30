@@ -6,8 +6,8 @@ import { DangerZone, EmptyState, ListItem, Loading } from "../../components/form
 import { refresh as refreshGon } from "../../gon";
 import { detectPasskeyName } from "../../passkey-detect";
 import { targetValue } from "../../typed-events";
-import { prepareCreationOptions } from "../../webauthn-helpers";
 import { copyToClipboard } from "../../ui";
+import { prepareCreationOptions } from "../../webauthn-helpers";
 import { rerender } from "./_shared";
 
 // ── b64/buf helpers (used by passkey registration) ──────────
@@ -608,17 +608,19 @@ export function SecuritySection(): VNode {
 								type="button"
 								className="provider-btn provider-btn-secondary"
 								onClick={() => {
-									copyToClipboard(pwRecoveryKey ?? "", "", "Could not copy — please select and copy the key manually.").then(
-										(ok) => {
-											if (!ok) return;
-											setPwRecoveryCopied(true);
+									copyToClipboard(
+										pwRecoveryKey ?? "",
+										"",
+										"Could not copy — please select and copy the key manually.",
+									).then((ok) => {
+										if (!ok) return;
+										setPwRecoveryCopied(true);
+										rerender();
+										setTimeout(() => {
+											setPwRecoveryCopied(false);
 											rerender();
-											setTimeout(() => {
-												setPwRecoveryCopied(false);
-												rerender();
-											}, 2000);
-										},
-									);
+										}, 2000);
+									});
 								}}
 							>
 								{pwRecoveryCopied ? "Copied!" : "Copy"}

@@ -86,7 +86,9 @@ async function dismissRecoveryKeyIfShown(page) {
 		if (await isVisible(copyBtn)) {
 			await copyBtn.click();
 			// Button should briefly show "Copied!" feedback
-			await expect(copyBtn).toHaveText("Copied!", { timeout: 2_000 }).catch(() => {});
+			await expect(copyBtn)
+				.toHaveText("Copied!", { timeout: 2_000 })
+				.catch(() => {});
 			// The key text passed to clipboard must match what was displayed
 			if (keyText) {
 				const captured = await page.evaluate(() => window.__recoveryKeyCopied);

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import * as gon from "../gon";
 import { parseAgentsListPayload, sendRpc } from "../helpers";
 import { models as modelsSig } from "../stores/model-store";
-import { ComboSelect, ConfirmDialog, Modal, ModelSelect, copyToClipboard, requestConfirm } from "../ui";
+import { ComboSelect, ConfirmDialog, copyToClipboard, Modal, ModelSelect, requestConfirm } from "../ui";
 
 // ── Types ───────────────────────────────────────────────────
 

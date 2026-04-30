@@ -15,7 +15,7 @@ import {
 import { models as modelsSig } from "../../../stores/model-store";
 import { targetValue } from "../../../typed-events";
 import { ChannelType } from "../../../types";
-import { Modal, copyToClipboard, showToast } from "../../../ui";
+import { copyToClipboard, Modal, showToast } from "../../../ui";
 import {
 	type ChannelConfig,
 	ConnectionModeHint,
