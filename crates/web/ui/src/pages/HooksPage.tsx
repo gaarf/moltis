@@ -238,7 +238,9 @@ function HookCard({ hook }: { hook: Hook }): VNode {
 							title="Click to copy path"
 							onClick={(e) => {
 								e.stopPropagation();
-								copyToClipboard(hook.source_path, "Path copied");
+								copyToClipboard(hook.source_path, "", "").then((ok) =>
+									showToast(ok ? "Path copied" : "Could not copy path", ok ? "success" : "error"),
+								);
 							}}
 						>
 							{hook.source_path}
