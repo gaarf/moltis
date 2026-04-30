@@ -55,6 +55,7 @@ import {
 	slashHideMenu,
 	slashInjectStyles,
 } from "./chat/slash-commands";
+import { copyToClipboard } from "../ui";
 
 // ── Module state ─────────────────────────────────────────────
 let promptMemoryToolbarRequestId = 0;
@@ -440,7 +441,8 @@ function wireFullContextCopyButton(
 		let copyText = contextText;
 		const llmOutputVisible = llmOutputPanel && !llmOutputPanel.classList.contains("hidden");
 		if (llmOutputVisible) copyText = `LLM output:\n${JSON.stringify(llmOutputs, null, 2)}\n\nContext:\n${contextText}`;
-		navigator.clipboard.writeText(copyText).then(() => {
+		copyToClipboard(copyText, "", "").then((ok) => {
+			if (!ok) return;
 			copyBtn.textContent = "Copied!";
 			setTimeout(() => {
 				copyBtn.textContent = "Copy";

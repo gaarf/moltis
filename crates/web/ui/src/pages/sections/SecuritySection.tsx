@@ -7,6 +7,7 @@ import { refresh as refreshGon } from "../../gon";
 import { detectPasskeyName } from "../../passkey-detect";
 import { targetValue } from "../../typed-events";
 import { prepareCreationOptions } from "../../webauthn-helpers";
+import { copyToClipboard } from "../../ui";
 import { rerender } from "./_shared";
 
 // ── b64/buf helpers (used by passkey registration) ──────────
@@ -607,14 +608,17 @@ export function SecuritySection(): VNode {
 								type="button"
 								className="provider-btn provider-btn-secondary"
 								onClick={() => {
-									navigator.clipboard.writeText(pwRecoveryKey).then(() => {
-										setPwRecoveryCopied(true);
-										setTimeout(() => {
-											setPwRecoveryCopied(false);
+									copyToClipboard(pwRecoveryKey ?? "", "", "Could not copy — please select and copy the key manually.").then(
+										(ok) => {
+											if (!ok) return;
+											setPwRecoveryCopied(true);
 											rerender();
-										}, 2000);
-										rerender();
-									});
+											setTimeout(() => {
+												setPwRecoveryCopied(false);
+												rerender();
+											}, 2000);
+										},
+									);
 								}}
 							>
 								{pwRecoveryCopied ? "Copied!" : "Copy"}

@@ -13,6 +13,7 @@ import { onEvent } from "../events";
 import { t } from "../i18n";
 import { registerPrefix } from "../router";
 import { routes } from "../routes";
+import { copyToClipboard } from "../ui";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -713,7 +714,8 @@ function PrometheusEndpoint(): VNode {
 	const endpoint = `${window.location.origin}/metrics`;
 
 	function copyEndpoint(): void {
-		navigator.clipboard.writeText(endpoint).then(() => {
+		copyToClipboard(endpoint, "", "").then((ok) => {
+			if (!ok) return;
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		});

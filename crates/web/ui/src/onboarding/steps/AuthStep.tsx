@@ -6,6 +6,7 @@ import { t } from "../../i18n";
 import { detectPasskeyName } from "../../passkey-detect";
 import { targetValue } from "../../typed-events";
 import { prepareCreationOptions } from "../../webauthn-helpers";
+import { copyToClipboard } from "../../ui";
 import { bufferToBase64, ErrorPanel, ensureWsConnected } from "../shared";
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: auth step handles passkey+password+code flows
@@ -304,10 +305,13 @@ export function AuthStep({ onNext, skippable }: { onNext: () => void; skippable:
 							type="button"
 							className="provider-btn provider-btn-secondary"
 							onClick={() => {
-								navigator.clipboard.writeText(recoveryKey).then(() => {
-									setRecoveryCopied(true);
-									setTimeout(() => setRecoveryCopied(false), 2000);
-								});
+								copyToClipboard(recoveryKey ?? "", "", "Could not copy — please select and copy the key manually.").then(
+									(ok) => {
+										if (!ok) return;
+										setRecoveryCopied(true);
+										setTimeout(() => setRecoveryCopied(false), 2000);
+									},
+								);
 							}}
 						>
 							{recoveryCopied ? "Copied!" : "Copy"}

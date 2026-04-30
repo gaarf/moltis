@@ -8,7 +8,7 @@ import { onEvent } from "../events";
 import { sendRpc } from "../helpers";
 import { navigate } from "../router";
 import { settingsPath } from "../routes";
-import { ConfirmDialog, requestConfirm } from "../ui";
+import { ConfirmDialog, copyToClipboard, requestConfirm } from "../ui";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -145,11 +145,6 @@ function showToast(message: string, type: string): void {
 	}, 4000);
 }
 
-function copyToClipboard(text: string): void {
-	if (navigator.clipboard?.writeText) {
-		navigator.clipboard.writeText(text).then(() => showToast("Copied to clipboard", "success"));
-	}
-}
 
 async function generateToken(): Promise<void> {
 	generatingToken.value = true;

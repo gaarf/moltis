@@ -7,7 +7,7 @@
 
 import { sendRpc } from "./helpers";
 import { renderPersistedAudio } from "./message-voice";
-import { showToast } from "./ui";
+import { copyToClipboard, showToast } from "./ui";
 
 // ── Icon helper ──────────────────────────────────────────────
 
@@ -68,21 +68,15 @@ export function appendMessageActions(ctx: MessageActionContext): void {
 	const copyBtn = actionButton("icon-copy", "Copy");
 	copyBtn.addEventListener("click", () => {
 		const text = extractPlainText(messageEl);
-		if (navigator.clipboard?.writeText) {
-			navigator.clipboard.writeText(text).then(
-				() => {
-					copyBtn.replaceChildren(iconSpan("icon-checkmark"));
-					copyBtn.title = "Copied";
-					setTimeout(() => {
-						copyBtn.replaceChildren(iconSpan("icon-copy"));
-						copyBtn.title = "Copy";
-					}, 1500);
-				},
-				() => {
-					showToast("Failed to copy to clipboard", "error");
-				},
-			);
-		}
+		copyToClipboard(text, "", "Failed to copy to clipboard").then((ok) => {
+			if (!ok) return;
+			copyBtn.replaceChildren(iconSpan("icon-checkmark"));
+			copyBtn.title = "Copied";
+			setTimeout(() => {
+				copyBtn.replaceChildren(iconSpan("icon-copy"));
+				copyBtn.title = "Copy";
+			}, 1500);
+		});
 	});
 	bar.appendChild(copyBtn);
 
