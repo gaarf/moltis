@@ -7,7 +7,7 @@
 //!
 //! All three paths share a single `ZEN_API_KEY` and base URL.
 
-use std::{pin::Pin, sync::Arc, time::Duration};
+use std::{collections::HashMap, pin::Pin, sync::Arc, time::Duration};
 
 use {
     async_trait::async_trait,
@@ -79,11 +79,21 @@ impl ZenProvider {
     /// `base_url` should be the `v1` prefix, e.g. `https://opencode.ai/zen/v1`.
     /// Anthropic routing strips the trailing `/v1` because `AnthropicProvider`
     /// appends `/v1/messages` internally.
-    pub fn new(api_key: Secret<String>, model_id: String, base_url: String) -> Self {
+    ///
+    /// `global_cw` and `provider_cw` are the context-window override maps from
+    /// `[models.<id>]` and `[providers.zen.model_overrides]` config respectively.
+    pub fn new(
+        api_key: Secret<String>,
+        model_id: String,
+        base_url: String,
+        global_cw: HashMap<String, u32>,
+        provider_cw: HashMap<String, u32>,
+    ) -> Self {
         let inner: Arc<dyn LlmProvider> = match classify_model(&model_id) {
             ZenWireFormat::OpenAiResponses => Arc::new(
                 OpenAiProvider::new_with_name(api_key, model_id.clone(), base_url, "zen".into())
-                    .with_wire_api(WireApi::Responses),
+                    .with_wire_api(WireApi::Responses)
+                    .with_context_window_overrides(global_cw, provider_cw),
             ),
             ZenWireFormat::Anthropic => {
                 // AnthropicProvider appends `/v1/messages` to its base_url, so
@@ -93,19 +103,20 @@ impl ZenProvider {
                     .strip_suffix("/v1")
                     .map(str::to_string)
                     .unwrap_or(base_url);
-                Arc::new(AnthropicProvider::with_alias(
-                    api_key,
-                    model_id.clone(),
-                    anthropic_base,
-                    Some("zen".into()),
-                ))
+                Arc::new(
+                    AnthropicProvider::with_alias(
+                        api_key,
+                        model_id.clone(),
+                        anthropic_base,
+                        Some("zen".into()),
+                    )
+                    .with_context_window_overrides(global_cw, provider_cw),
+                )
             },
-            ZenWireFormat::ChatCompletions => Arc::new(OpenAiProvider::new_with_name(
-                api_key,
-                model_id.clone(),
-                base_url,
-                "zen".into(),
-            )),
+            ZenWireFormat::ChatCompletions => Arc::new(
+                OpenAiProvider::new_with_name(api_key, model_id.clone(), base_url, "zen".into())
+                    .with_context_window_overrides(global_cw, provider_cw),
+            ),
         };
         Self { model_id, inner }
     }
@@ -258,26 +269,98 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn anthropic_base_url_strip() {
-        // Simulate what new() does: strip /v1 for AnthropicProvider
-        let base = "https://opencode.ai/zen/v1";
-        let stripped = base
-            .trim_end_matches('/')
-            .strip_suffix("/v1")
-            .map(str::to_string)
-            .unwrap_or_else(|| base.to_string());
-        assert_eq!(stripped, "https://opencode.ai/zen");
+    fn dummy_key() -> Secret<String> {
+        Secret::new("test-key".into())
     }
 
     #[test]
-    fn anthropic_base_url_strip_trailing_slash() {
-        let base = "https://opencode.ai/zen/v1/";
-        let stripped = base
-            .trim_end_matches('/')
-            .strip_suffix("/v1")
-            .map(str::to_string)
-            .unwrap_or_else(|| base.to_string());
-        assert_eq!(stripped, "https://opencode.ai/zen");
+    fn zen_provider_name_is_zen_for_all_wire_formats() {
+        let base = "https://opencode.ai/zen/v1".to_string();
+        for model_id in &[
+            "gpt-4o",
+            "claude-sonnet-4-6",
+            "gemini-2.5-pro-preview-05-06",
+        ] {
+            let p = ZenProvider::new(
+                dummy_key(),
+                model_id.to_string(),
+                base.clone(),
+                HashMap::new(),
+                HashMap::new(),
+            );
+            assert_eq!(p.name(), "zen", "name() should be 'zen' for {model_id}");
+        }
+    }
+
+    #[test]
+    fn context_window_overrides_applied_to_anthropic_inner() {
+        let mut provider_cw = HashMap::new();
+        provider_cw.insert("claude-sonnet-4-6".to_string(), 50_000u32);
+        let p = ZenProvider::new(
+            dummy_key(),
+            "claude-sonnet-4-6".into(),
+            "https://opencode.ai/zen/v1".into(),
+            HashMap::new(),
+            provider_cw,
+        );
+        assert_eq!(p.context_window(), 50_000);
+    }
+
+    #[test]
+    fn context_window_overrides_applied_to_openai_inner() {
+        let mut global_cw = HashMap::new();
+        global_cw.insert("gpt-4o".to_string(), 64_000u32);
+        let p = ZenProvider::new(
+            dummy_key(),
+            "gpt-4o".into(),
+            "https://opencode.ai/zen/v1".into(),
+            global_cw,
+            HashMap::new(),
+        );
+        assert_eq!(p.context_window(), 64_000);
+    }
+
+    #[test]
+    fn context_window_overrides_applied_to_chat_completions_inner() {
+        let mut provider_cw = HashMap::new();
+        provider_cw.insert("gemini-2.5-flash-preview-05-20".to_string(), 32_000u32);
+        let p = ZenProvider::new(
+            dummy_key(),
+            "gemini-2.5-flash-preview-05-20".into(),
+            "https://opencode.ai/zen/v1".into(),
+            HashMap::new(),
+            provider_cw,
+        );
+        assert_eq!(p.context_window(), 32_000);
+    }
+
+    #[test]
+    fn anthropic_routing_with_trailing_slash_base_url() {
+        // Verify construction succeeds and name is correct when base URL has trailing slash.
+        // The /v1/ suffix must be stripped before AnthropicProvider appends /v1/messages.
+        let p = ZenProvider::new(
+            dummy_key(),
+            "claude-opus-4-6".into(),
+            "https://opencode.ai/zen/v1/".into(),
+            HashMap::new(),
+            HashMap::new(),
+        );
+        assert_eq!(p.name(), "zen");
+    }
+
+    #[test]
+    fn prefixed_model_ids_fall_through_to_chat_completions() {
+        // If Zen's /models endpoint returns "anthropic/claude-..." or "openai/gpt-..." style IDs,
+        // classify_model will not match the gpt-/claude- prefixes and will route via ChatCompletions.
+        // This is the known risk documented in the code review. If that happens in practice, add
+        // prefix-stripping normalization here and in fetch_models_from_api.
+        assert!(matches!(
+            classify_model("anthropic/claude-sonnet-4-6"),
+            ZenWireFormat::ChatCompletions
+        ));
+        assert!(matches!(
+            classify_model("openai/gpt-4o"),
+            ZenWireFormat::ChatCompletions
+        ));
     }
 }

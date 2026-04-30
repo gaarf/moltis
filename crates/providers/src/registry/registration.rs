@@ -1126,6 +1126,12 @@ impl ProviderRegistry {
         };
         let models = merge_preferred_and_discovered_models(preferred, discovered);
 
+        let global_cw = self.global_cw_overrides.clone();
+        let provider_cw = config
+            .get("zen")
+            .map(|e| extract_cw_overrides(&e.model_overrides))
+            .unwrap_or_default();
+
         for model in models {
             if self.has_provider_model(&provider_label, &model.id) {
                 continue;
@@ -1134,6 +1140,8 @@ impl ProviderRegistry {
                 key.clone(),
                 model.id.clone(),
                 base_url.clone(),
+                global_cw.clone(),
+                provider_cw.clone(),
             ));
             self.register(
                 ModelInfo {
