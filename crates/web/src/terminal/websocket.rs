@@ -326,7 +326,7 @@ pub(crate) async fn handle_terminal_ws_connection(
                                 else {
                                     if !terminal_ws_send_status(
                                         &mut ws_tx,
-                                        "requested terminal window does not exist",
+                                        "requested terminal tab does not exist",
                                         "error",
                                     )
                                     .await
