@@ -469,9 +469,9 @@ async function createTerminalWindow(): Promise<void> {
 			pendingWindowId = null;
 			renderWindowTabs();
 		}
+		setStatus("New tab created.", "ok");
 		if (xterm) xterm.reset();
 		connectTerminalSocket();
-		setStatus("New tab created.", "ok");
 	} catch (e) {
 		setStatus((e as Error)?.message || "Failed to create tab", "error");
 	} finally {
