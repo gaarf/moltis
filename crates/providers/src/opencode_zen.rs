@@ -3,6 +3,7 @@
 //! Zen routes requests to different wire formats based on model family:
 //! - `claude-*`  → Anthropic Messages API (`/zen/v1/messages`)
 //! - `gpt-*`     → OpenAI Responses API   (`/zen/v1/responses`)
+//! - `gemini-*`  → OpenAI ChatCompletions  (`/zen/v1/chat/completions`) (no Google wire format)
 //! - everything  → OpenAI ChatCompletions  (`/zen/v1/chat/completions`)
 //!
 //! All three paths share a single `OPENCODE_ZEN_API_KEY` and base URL.
@@ -24,28 +25,28 @@ use crate::{anthropic::AnthropicProvider, openai::OpenAiProvider};
 pub const OPENCODE_ZEN_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/v1";
 
 /// Static fallback model catalog for when live discovery is unavailable.
-/// Model IDs must match what the Zen API accepts — they are the same IDs the
-/// underlying provider expects (no `opencode/` prefix).
+///
+/// Only lists the latest version of each model family; older versions are
+/// discovered via the live `/zen/v1/models` endpoint. Free-tier models are
+/// omitted. Model IDs match what the Zen API accepts (no `opencode/` prefix).
+/// Keep in sync with `GET https://opencode.ai/zen/v1/models`.
 pub(crate) const OPENCODE_ZEN_MODELS: &[(&str, &str)] = &[
     // OpenAI (Responses API)
-    ("gpt-4o", "GPT-4o (OpenCode Zen)"),
-    ("gpt-4.1", "GPT-4.1 (OpenCode Zen)"),
+    ("gpt-5.5", "GPT-5.5 (OpenCode Zen)"),
+    ("gpt-5.5-pro", "GPT-5.5 Pro (OpenCode Zen)"),
     // Anthropic (Messages API)
-    ("claude-opus-4-6", "Claude Opus 4.6 (OpenCode Zen)"),
+    ("claude-opus-4-7", "Claude Opus 4.7 (OpenCode Zen)"),
     ("claude-sonnet-4-6", "Claude Sonnet 4.6 (OpenCode Zen)"),
-    (
-        "claude-haiku-4-5-20251001",
-        "Claude Haiku 4.5 (OpenCode Zen)",
-    ),
-    // Gemini (ChatCompletions fallback)
-    (
-        "gemini-2.5-pro-preview-05-06",
-        "Gemini 2.5 Pro (OpenCode Zen)",
-    ),
-    (
-        "gemini-2.5-flash-preview-05-20",
-        "Gemini 2.5 Flash (OpenCode Zen)",
-    ),
+    ("claude-haiku-4-5", "Claude Haiku 4.5 (OpenCode Zen)"),
+    // Gemini — Zen docs show a dedicated /zen/v1/models/gemini-* endpoint,
+    // but we lack a Google-native wire format. ChatCompletions works as a fallback.
+    ("gemini-3.1-pro", "Gemini 3.1 Pro (OpenCode Zen)"),
+    ("gemini-3-flash", "Gemini 3 Flash (OpenCode Zen)"),
+    // ChatCompletions models
+    ("glm-5.1", "GLM 5.1 (OpenCode Zen)"),
+    ("minimax-m2.7", "MiniMax M2.7 (OpenCode Zen)"),
+    ("kimi-k2.6", "Kimi K2.6 (OpenCode Zen)"),
+    ("qwen3.6-plus", "Qwen 3.6 Plus (OpenCode Zen)"),
 ];
 
 /// Wire format to use for a given model, determined by model ID prefix.
@@ -59,8 +60,6 @@ enum ZenWireFormat {
 }
 
 fn classify_model(model_id: &str) -> ZenWireFormat {
-    // Normalize "provider/model-id" → "model-id" so prefix matching works
-    // even if Zen's /models endpoint returns fully-qualified IDs.
     let bare = model_id
         .rsplit_once('/')
         .map(|(_, id)| id)
@@ -239,39 +238,74 @@ mod tests {
     }
 
     #[test]
+    fn opencode_zen_models_all_classify_correctly() {
+        for (id, _label) in OPENCODE_ZEN_MODELS {
+            let fmt = classify_model(id);
+            let expected = if id.starts_with("gpt-") {
+                "OpenAiResponses"
+            } else if id.starts_with("claude-") {
+                "Anthropic"
+            } else {
+                "ChatCompletions"
+            };
+            let actual = match fmt {
+                ZenWireFormat::OpenAiResponses => "OpenAiResponses",
+                ZenWireFormat::Anthropic => "Anthropic",
+                ZenWireFormat::ChatCompletions => "ChatCompletions",
+            };
+            assert_eq!(
+                actual, expected,
+                "model {id} classified as {actual}, expected {expected}"
+            );
+        }
+    }
+
+    #[test]
     fn classify_gpt_uses_responses() {
-        assert!(matches!(
-            classify_model("gpt-4o"),
-            ZenWireFormat::OpenAiResponses
-        ));
-        assert!(matches!(
-            classify_model("gpt-4.1"),
-            ZenWireFormat::OpenAiResponses
-        ));
+        let gpt_models = [
+            "gpt-5.5", "gpt-5.5-pro", "gpt-5.4", "gpt-5.4-pro", "gpt-5.4-mini",
+            "gpt-5.4-nano", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.2",
+            "gpt-5.2-codex", "gpt-5.1", "gpt-5.1-codex", "gpt-5.1-codex-max",
+            "gpt-5.1-codex-mini", "gpt-5", "gpt-5-codex", "gpt-5-nano",
+        ];
+        for id in &gpt_models {
+            assert!(
+                matches!(classify_model(id), ZenWireFormat::OpenAiResponses),
+                "{id} should classify as OpenAiResponses"
+            );
+        }
     }
 
     #[test]
     fn classify_claude_uses_anthropic() {
-        assert!(matches!(
-            classify_model("claude-sonnet-4-6"),
-            ZenWireFormat::Anthropic
-        ));
-        assert!(matches!(
-            classify_model("claude-opus-4-6"),
-            ZenWireFormat::Anthropic
-        ));
+        let claude_models = [
+            "claude-opus-4-7", "claude-opus-4-6", "claude-opus-4-5", "claude-opus-4-1",
+            "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-sonnet-4",
+            "claude-haiku-4-5",
+        ];
+        for id in &claude_models {
+            assert!(
+                matches!(classify_model(id), ZenWireFormat::Anthropic),
+                "{id} should classify as Anthropic"
+            );
+        }
     }
 
     #[test]
     fn classify_other_uses_chat_completions() {
-        assert!(matches!(
-            classify_model("gemini-2.5-pro-preview-05-06"),
-            ZenWireFormat::ChatCompletions
-        ));
-        assert!(matches!(
-            classify_model("qwen3-max"),
-            ZenWireFormat::ChatCompletions
-        ));
+        let other_models = [
+            "gemini-3.1-pro", "gemini-3-flash", "glm-5.1", "glm-5",
+            "minimax-m2.7", "minimax-m2.5", "minimax-m2.5-free",
+            "kimi-k2.6", "kimi-k2.5", "qwen3.6-plus", "qwen3.5-plus",
+            "big-pickle", "hy3-preview-free", "ling-2.6-flash-free",
+            "trinity-large-preview-free", "nemotron-3-super-free",
+        ];
+        for id in &other_models {
+            assert!(
+                matches!(classify_model(id), ZenWireFormat::ChatCompletions),
+                "{id} should classify as ChatCompletions"
+            );
+        }
     }
 
     fn dummy_key() -> Secret<String> {
@@ -281,11 +315,7 @@ mod tests {
     #[test]
     fn zen_provider_name_is_opencode_zen_for_all_wire_formats() {
         let base = "https://opencode.ai/zen/v1".to_string();
-        for model_id in &[
-            "gpt-4o",
-            "claude-sonnet-4-6",
-            "gemini-2.5-pro-preview-05-06",
-        ] {
+        for model_id in &["gpt-5.5", "claude-opus-4-7", "gemini-3.1-pro", "kimi-k2.6"] {
             let p = ZenProvider::new(
                 dummy_key(),
                 model_id.to_string(),
@@ -318,10 +348,10 @@ mod tests {
     #[test]
     fn context_window_overrides_applied_to_openai_inner() {
         let mut global_cw = HashMap::new();
-        global_cw.insert("gpt-4o".to_string(), 64_000u32);
+        global_cw.insert("gpt-5.5".to_string(), 64_000u32);
         let p = ZenProvider::new(
             dummy_key(),
-            "gpt-4o".into(),
+            "gpt-5.5".into(),
             "https://opencode.ai/zen/v1".into(),
             global_cw,
             HashMap::new(),
@@ -332,10 +362,10 @@ mod tests {
     #[test]
     fn context_window_overrides_applied_to_chat_completions_inner() {
         let mut provider_cw = HashMap::new();
-        provider_cw.insert("gemini-2.5-flash-preview-05-20".to_string(), 32_000u32);
+        provider_cw.insert("gemini-3.1-pro".to_string(), 32_000u32);
         let p = ZenProvider::new(
             dummy_key(),
-            "gemini-2.5-flash-preview-05-20".into(),
+            "gemini-3.1-pro".into(),
             "https://opencode.ai/zen/v1".into(),
             HashMap::new(),
             provider_cw,
@@ -366,7 +396,7 @@ mod tests {
             ZenWireFormat::Anthropic
         ));
         assert!(matches!(
-            classify_model("openai/gpt-4o"),
+            classify_model("openai/gpt-5.5"),
             ZenWireFormat::OpenAiResponses
         ));
         assert!(matches!(
