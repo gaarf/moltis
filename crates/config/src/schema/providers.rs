@@ -49,7 +49,7 @@ pub const KNOWN_PROVIDER_NAMES: &[&str] = &[
     "groq",
     "xai",
     // Multi-protocol proxy (opencode.ai)
-    "zen",
+    "opencode-zen",
 ];
 
 /// OAuth provider configuration (e.g. openai-codex).

@@ -27,7 +27,7 @@ pub mod openai_codex;
 pub mod openai_compat;
 pub mod registry;
 pub mod ws_pool;
-pub mod zen;
+pub mod opencode_zen;
 
 #[cfg(test)]
 pub mod contract;

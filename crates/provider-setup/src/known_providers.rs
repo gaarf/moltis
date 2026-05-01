@@ -258,10 +258,10 @@ pub fn known_providers() -> Vec<KnownProvider> {
             local_only: false,
         },
         KnownProvider {
-            name: "zen",
-            display_name: "Zen (opencode.ai)",
+            name: "opencode-zen",
+            display_name: "OpenCode Zen",
             auth_type: AuthType::ApiKey,
-            env_key: Some("ZEN_API_KEY"),
+            env_key: Some("OPENCODE_ZEN_API_KEY"),
             default_base_url: Some("https://opencode.ai/zen/v1"),
             requires_model: false,
             key_optional: false,

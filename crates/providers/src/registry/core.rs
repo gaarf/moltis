@@ -250,21 +250,22 @@ pub async fn fetch_discoverable_models(
         }
     }
 
-    // ── Zen (opencode.ai) ─────────────────────────────────────────────
-    if filter_matches("zen")
-        && config.is_enabled("zen")
+    // ── OpenCode Zen (opencode.ai) ────────────────────────────────────
+    if filter_matches("opencode-zen")
+        && config.is_enabled("opencode-zen")
         && !cfg!(test)
-        && let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides)
-        && should_fetch_models(config, "zen")
+        && let Some(key) =
+            resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
+        && should_fetch_models(config, "opencode-zen")
     {
         let base_url = config
-            .get("zen")
+            .get("opencode-zen")
             .and_then(|e| e.base_url.clone())
-            .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
-            .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
+            .or_else(|| env_value(env_overrides, "OPENCODE_ZEN_BASE_URL"))
+            .unwrap_or_else(|| crate::opencode_zen::OPENCODE_ZEN_DEFAULT_BASE_URL.into());
         // Zen exposes an OpenAI-compatible /models endpoint.
         tasks.push((
-            "zen".into(),
+            "opencode-zen".into(),
             Box::pin(openai::fetch_models_from_api(key, base_url)),
         ));
     }
@@ -880,7 +881,7 @@ impl ProviderRegistry {
             reg.register_kimi_code_providers(config, env_overrides);
         }
 
-        reg.register_zen_providers(config, env_overrides, prefetched);
+        reg.register_opencode_zen_providers(config, env_overrides, prefetched);
 
         // Local GGUF providers (no API key needed, model runs locally)
         #[cfg(feature = "local-llm")]
@@ -1021,19 +1022,23 @@ impl ProviderRegistry {
             }
         }
 
-        // ── Zen (opencode.ai) ────────────────────────────────────────────
-        if config.is_enabled("zen")
+        // ── OpenCode Zen (opencode.ai) ───────────────────────────────────
+        if config.is_enabled("opencode-zen")
             && !cfg!(test)
-            && let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides)
-            && should_fetch_models(config, "zen")
+            && let Some(key) =
+                resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
+            && should_fetch_models(config, "opencode-zen")
         {
             let base_url = config
-                .get("zen")
+                .get("opencode-zen")
                 .and_then(|e| e.base_url.clone())
-                .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
-                .unwrap_or_else(|| crate::zen::ZEN_DEFAULT_BASE_URL.into());
+                .or_else(|| env_value(env_overrides, "OPENCODE_ZEN_BASE_URL"))
+                .unwrap_or_else(|| crate::opencode_zen::OPENCODE_ZEN_DEFAULT_BASE_URL.into());
             // Zen exposes an OpenAI-compatible /models endpoint.
-            pending.push(("zen".into(), openai::start_model_discovery(key, base_url)));
+            pending.push((
+                "opencode-zen".into(),
+                openai::start_model_discovery(key, base_url),
+            ));
         }
 
         // ── OpenAI Codex ─────────────────────────────────────────────────

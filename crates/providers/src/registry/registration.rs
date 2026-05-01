@@ -30,7 +30,7 @@ use crate::openai_codex;
 #[allow(unused_imports)]
 use crate::{
     anthropic, async_openai_provider, config_helpers::*, discovered_model::*, genai_provider,
-    model_capabilities::*, model_catalogs::*, model_id::*, ollama::*, openai, zen,
+    model_capabilities::*, model_catalogs::*, model_id::*, ollama::*, openai, opencode_zen,
 };
 impl ProviderRegistry {
     /// Register models from a [`RediscoveryResult`], skipping those already
@@ -1093,52 +1093,56 @@ impl ProviderRegistry {
         }
     }
 
-    pub(crate) fn register_zen_providers(
+    pub(crate) fn register_opencode_zen_providers(
         &mut self,
         config: &ProvidersConfig,
         env_overrides: &HashMap<String, String>,
         prefetched: &HashMap<String, Vec<DiscoveredModel>>,
     ) {
-        if !config.is_enabled("zen") {
+        if !config.is_enabled("opencode-zen") {
             return;
         }
-        let Some(key) = resolve_api_key(config, "zen", "ZEN_API_KEY", env_overrides) else {
+        let Some(key) =
+            resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
+        else {
             return;
         };
 
         let base_url = config
-            .get("zen")
+            .get("opencode-zen")
             .and_then(|e| e.base_url.clone())
-            .or_else(|| env_value(env_overrides, "ZEN_BASE_URL"))
-            .unwrap_or_else(|| zen::ZEN_DEFAULT_BASE_URL.into());
+            .or_else(|| env_value(env_overrides, "OPENCODE_ZEN_BASE_URL"))
+            .unwrap_or_else(|| opencode_zen::OPENCODE_ZEN_DEFAULT_BASE_URL.into());
 
-        let alias = config.get("zen").and_then(|e| e.alias.clone());
-        let provider_label = alias.unwrap_or_else(|| "zen".into());
+        let alias = config.get("opencode-zen").and_then(|e| e.alias.clone());
+        let provider_label = alias.unwrap_or_else(|| "opencode-zen".into());
 
-        let preferred = configured_models_for_provider(config, "zen");
-        let discovered = if should_fetch_models(config, "zen") {
-            match prefetched.get("zen") {
+        let preferred = configured_models_for_provider(config, "opencode-zen");
+        let discovered = if should_fetch_models(config, "opencode-zen") {
+            match prefetched.get("opencode-zen") {
                 Some(live) => live.clone(),
                 // Live fetch was requested but produced no result — fall back to
                 // the static catalog so the provider is still usable.
-                None => catalog_to_discovered(zen::ZEN_MODELS, 2),
+                None => catalog_to_discovered(opencode_zen::OPENCODE_ZEN_MODELS, 2),
             }
         } else {
             // Discovery explicitly disabled: only register models the user
-            // pinned in [providers.zen] models = [...]. Consistent with how
-            // other built-in providers behave when fetch_models = false.
+            // pinned in [providers.opencode-zen] models = [...]. Consistent with
+            // how other built-in providers behave when fetch_models = false.
             Vec::new()
         };
         let models = merge_preferred_and_discovered_models(preferred, discovered);
 
         if models.is_empty() {
-            tracing::debug!("zen: no models to register (discovery disabled and no pinned models)");
+            tracing::debug!(
+                "opencode-zen: no models to register (discovery disabled and no pinned models)"
+            );
             return;
         }
 
         let global_cw = self.global_cw_overrides.clone();
         let provider_cw = config
-            .get("zen")
+            .get("opencode-zen")
             .map(|e| extract_cw_overrides(&e.model_overrides))
             .unwrap_or_default();
 
@@ -1147,7 +1151,7 @@ impl ProviderRegistry {
             if self.has_provider_model(&provider_label, &model.id) {
                 continue;
             }
-            let provider: Arc<dyn LlmProvider> = Arc::new(zen::ZenProvider::new(
+            let provider: Arc<dyn LlmProvider> = Arc::new(opencode_zen::ZenProvider::new(
                 key.clone(),
                 model.id.clone(),
                 base_url.clone(),
@@ -1170,7 +1174,7 @@ impl ProviderRegistry {
             added += 1;
         }
 
-        tracing::info!(model_count = added, "registered Zen (opencode.ai) provider");
+        tracing::info!(model_count = added, "registered OpenCode Zen provider");
     }
 
     pub fn get(&self, model_id: &str) -> Option<Arc<dyn LlmProvider>> {

@@ -1,11 +1,11 @@
-//! Zen provider — opencode.ai's curated multi-protocol model proxy.
+//! OpenCode Zen provider — opencode.ai's curated multi-protocol model proxy.
 //!
 //! Zen routes requests to different wire formats based on model family:
 //! - `claude-*`  → Anthropic Messages API (`/zen/v1/messages`)
 //! - `gpt-*`     → OpenAI Responses API   (`/zen/v1/responses`)
 //! - everything  → OpenAI ChatCompletions  (`/zen/v1/chat/completions`)
 //!
-//! All three paths share a single `ZEN_API_KEY` and base URL.
+//! All three paths share a single `OPENCODE_ZEN_API_KEY` and base URL.
 
 use std::{collections::HashMap, pin::Pin, sync::Arc, time::Duration};
 
@@ -21,22 +21,22 @@ use {
 
 use crate::{anthropic::AnthropicProvider, openai::OpenAiProvider};
 
-pub const ZEN_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/v1";
+pub const OPENCODE_ZEN_DEFAULT_BASE_URL: &str = "https://opencode.ai/zen/v1";
 
 /// Static fallback model catalog for when live discovery is unavailable.
 /// Model IDs must match what the Zen API accepts — they are the same IDs the
 /// underlying provider expects (no `opencode/` prefix).
-pub(crate) const ZEN_MODELS: &[(&str, &str)] = &[
+pub(crate) const OPENCODE_ZEN_MODELS: &[(&str, &str)] = &[
     // OpenAI (Responses API)
-    ("gpt-4o", "GPT-4o (Zen)"),
-    ("gpt-4.1", "GPT-4.1 (Zen)"),
+    ("gpt-4o", "GPT-4o (OpenCode Zen)"),
+    ("gpt-4.1", "GPT-4.1 (OpenCode Zen)"),
     // Anthropic (Messages API)
-    ("claude-opus-4-6", "Claude Opus 4.6 (Zen)"),
-    ("claude-sonnet-4-6", "Claude Sonnet 4.6 (Zen)"),
-    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5 (Zen)"),
+    ("claude-opus-4-6", "Claude Opus 4.6 (OpenCode Zen)"),
+    ("claude-sonnet-4-6", "Claude Sonnet 4.6 (OpenCode Zen)"),
+    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5 (OpenCode Zen)"),
     // Gemini (ChatCompletions fallback)
-    ("gemini-2.5-pro-preview-05-06", "Gemini 2.5 Pro (Zen)"),
-    ("gemini-2.5-flash-preview-05-20", "Gemini 2.5 Flash (Zen)"),
+    ("gemini-2.5-pro-preview-05-06", "Gemini 2.5 Pro (OpenCode Zen)"),
+    ("gemini-2.5-flash-preview-05-20", "Gemini 2.5 Flash (OpenCode Zen)"),
 ];
 
 /// Wire format to use for a given model, determined by model ID prefix.
@@ -59,7 +59,7 @@ fn classify_model(model_id: &str) -> ZenWireFormat {
     }
 }
 
-/// A Zen (opencode.ai) provider that dispatches to the correct wire format.
+/// An OpenCode Zen (opencode.ai) provider that dispatches to the correct wire format.
 ///
 /// The inner provider is selected once at construction time based on the model
 /// ID prefix, so all hot-path method calls are simple `Arc<dyn LlmProvider>`
@@ -77,7 +77,7 @@ impl ZenProvider {
     /// appends `/v1/messages` internally.
     ///
     /// `global_cw` and `provider_cw` are the context-window override maps from
-    /// `[models.<id>]` and `[providers.zen.model_overrides]` config respectively.
+    /// `[models.<id>]` and `[providers.opencode-zen.model_overrides]` config respectively.
     pub fn new(
         api_key: Secret<String>,
         model_id: String,
@@ -87,9 +87,14 @@ impl ZenProvider {
     ) -> Self {
         let inner: Arc<dyn LlmProvider> = match classify_model(&model_id) {
             ZenWireFormat::OpenAiResponses => Arc::new(
-                OpenAiProvider::new_with_name(api_key, model_id.clone(), base_url, "zen".into())
-                    .with_wire_api(WireApi::Responses)
-                    .with_context_window_overrides(global_cw, provider_cw),
+                OpenAiProvider::new_with_name(
+                    api_key,
+                    model_id.clone(),
+                    base_url,
+                    "opencode-zen".into(),
+                )
+                .with_wire_api(WireApi::Responses)
+                .with_context_window_overrides(global_cw, provider_cw),
             ),
             ZenWireFormat::Anthropic => {
                 // AnthropicProvider appends `/v1/messages` to its base_url, so
@@ -104,14 +109,19 @@ impl ZenProvider {
                         api_key,
                         model_id.clone(),
                         anthropic_base,
-                        Some("zen".into()),
+                        Some("opencode-zen".into()),
                     )
                     .with_context_window_overrides(global_cw, provider_cw),
                 )
             },
             ZenWireFormat::ChatCompletions => Arc::new(
-                OpenAiProvider::new_with_name(api_key, model_id.clone(), base_url, "zen".into())
-                    .with_context_window_overrides(global_cw, provider_cw),
+                OpenAiProvider::new_with_name(
+                    api_key,
+                    model_id.clone(),
+                    base_url,
+                    "opencode-zen".into(),
+                )
+                .with_context_window_overrides(global_cw, provider_cw),
             ),
         };
         Self { model_id, inner }
@@ -121,7 +131,7 @@ impl ZenProvider {
 #[async_trait]
 impl LlmProvider for ZenProvider {
     fn name(&self) -> &str {
-        "zen"
+        "opencode-zen"
     }
 
     fn id(&self) -> &str {
@@ -200,17 +210,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn zen_models_not_empty() {
-        assert!(!ZEN_MODELS.is_empty());
+    fn opencode_zen_models_not_empty() {
+        assert!(!OPENCODE_ZEN_MODELS.is_empty());
     }
 
     #[test]
-    fn zen_models_have_unique_ids() {
-        let mut ids: Vec<&str> = ZEN_MODELS.iter().map(|(id, _)| *id).collect();
+    fn opencode_zen_models_have_unique_ids() {
+        let mut ids: Vec<&str> = OPENCODE_ZEN_MODELS.iter().map(|(id, _)| *id).collect();
         ids.sort();
         let before = ids.len();
         ids.dedup();
-        assert_eq!(before, ids.len(), "duplicate ZEN_MODELS IDs");
+        assert_eq!(before, ids.len(), "duplicate OPENCODE_ZEN_MODELS IDs");
     }
 
     #[test]
@@ -254,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn zen_provider_name_is_zen_for_all_wire_formats() {
+    fn zen_provider_name_is_opencode_zen_for_all_wire_formats() {
         let base = "https://opencode.ai/zen/v1".to_string();
         for model_id in &[
             "gpt-4o",
@@ -268,7 +278,11 @@ mod tests {
                 HashMap::new(),
                 HashMap::new(),
             );
-            assert_eq!(p.name(), "zen", "name() should be 'zen' for {model_id}");
+            assert_eq!(
+                p.name(),
+                "opencode-zen",
+                "name() should be 'opencode-zen' for {model_id}"
+            );
         }
     }
 
@@ -325,7 +339,7 @@ mod tests {
             HashMap::new(),
             HashMap::new(),
         );
-        assert_eq!(p.name(), "zen");
+        assert_eq!(p.name(), "opencode-zen");
     }
 
     #[test]
