@@ -50,9 +50,12 @@ enum ZenWireFormat {
 }
 
 fn classify_model(model_id: &str) -> ZenWireFormat {
-    if model_id.starts_with("gpt-") {
+    // Normalize "provider/model-id" → "model-id" so prefix matching works
+    // even if Zen's /models endpoint returns fully-qualified IDs.
+    let bare = model_id.rsplit_once('/').map(|(_, id)| id).unwrap_or(model_id);
+    if bare.starts_with("gpt-") {
         ZenWireFormat::OpenAiResponses
-    } else if model_id.starts_with("claude-") {
+    } else if bare.starts_with("claude-") {
         ZenWireFormat::Anthropic
     } else {
         ZenWireFormat::ChatCompletions
@@ -343,17 +346,19 @@ mod tests {
     }
 
     #[test]
-    fn prefixed_model_ids_fall_through_to_chat_completions() {
-        // If Zen's /models endpoint returns "anthropic/claude-..." or "openai/gpt-..." style IDs,
-        // classify_model will not match the gpt-/claude- prefixes and will route via ChatCompletions.
-        // This is the known risk documented in the code review. If that happens in practice, add
-        // prefix-stripping normalization here and in fetch_models_from_api.
+    fn prefixed_model_ids_are_normalized_before_classification() {
+        // Zen's /models endpoint may return "provider/model-id" style IDs.
+        // classify_model strips the prefix so routing is still correct.
         assert!(matches!(
             classify_model("anthropic/claude-sonnet-4-6"),
-            ZenWireFormat::ChatCompletions
+            ZenWireFormat::Anthropic
         ));
         assert!(matches!(
             classify_model("openai/gpt-4o"),
+            ZenWireFormat::OpenAiResponses
+        ));
+        assert!(matches!(
+            classify_model("google/gemini-2.5-pro"),
             ZenWireFormat::ChatCompletions
         ));
     }

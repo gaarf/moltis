@@ -1174,7 +1174,9 @@ impl ProviderRegistry {
             added += 1;
         }
 
-        tracing::info!(model_count = added, "registered OpenCode Zen provider");
+        if added > 0 {
+            tracing::info!(model_count = added, "registered OpenCode Zen provider");
+        }
     }
 
     pub fn get(&self, model_id: &str) -> Option<Arc<dyn LlmProvider>> {
