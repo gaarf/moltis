@@ -254,8 +254,12 @@ pub async fn fetch_discoverable_models(
     if filter_matches("opencode-zen")
         && config.is_enabled("opencode-zen")
         && !cfg!(test)
-        && let Some(key) =
-            resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
+        && let Some(key) = resolve_api_key(
+            config,
+            "opencode-zen",
+            "OPENCODE_ZEN_API_KEY",
+            env_overrides,
+        )
         && should_fetch_models(config, "opencode-zen")
     {
         let base_url = config
@@ -1025,8 +1029,12 @@ impl ProviderRegistry {
         // ── OpenCode Zen (opencode.ai) ───────────────────────────────────
         if config.is_enabled("opencode-zen")
             && !cfg!(test)
-            && let Some(key) =
-                resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
+            && let Some(key) = resolve_api_key(
+                config,
+                "opencode-zen",
+                "OPENCODE_ZEN_API_KEY",
+                env_overrides,
+            )
             && should_fetch_models(config, "opencode-zen")
         {
             let base_url = config

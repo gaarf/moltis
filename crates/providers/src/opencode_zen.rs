@@ -33,10 +33,19 @@ pub(crate) const OPENCODE_ZEN_MODELS: &[(&str, &str)] = &[
     // Anthropic (Messages API)
     ("claude-opus-4-6", "Claude Opus 4.6 (OpenCode Zen)"),
     ("claude-sonnet-4-6", "Claude Sonnet 4.6 (OpenCode Zen)"),
-    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5 (OpenCode Zen)"),
+    (
+        "claude-haiku-4-5-20251001",
+        "Claude Haiku 4.5 (OpenCode Zen)",
+    ),
     // Gemini (ChatCompletions fallback)
-    ("gemini-2.5-pro-preview-05-06", "Gemini 2.5 Pro (OpenCode Zen)"),
-    ("gemini-2.5-flash-preview-05-20", "Gemini 2.5 Flash (OpenCode Zen)"),
+    (
+        "gemini-2.5-pro-preview-05-06",
+        "Gemini 2.5 Pro (OpenCode Zen)",
+    ),
+    (
+        "gemini-2.5-flash-preview-05-20",
+        "Gemini 2.5 Flash (OpenCode Zen)",
+    ),
 ];
 
 /// Wire format to use for a given model, determined by model ID prefix.
@@ -52,7 +61,10 @@ enum ZenWireFormat {
 fn classify_model(model_id: &str) -> ZenWireFormat {
     // Normalize "provider/model-id" → "model-id" so prefix matching works
     // even if Zen's /models endpoint returns fully-qualified IDs.
-    let bare = model_id.rsplit_once('/').map(|(_, id)| id).unwrap_or(model_id);
+    let bare = model_id
+        .rsplit_once('/')
+        .map(|(_, id)| id)
+        .unwrap_or(model_id);
     if bare.starts_with("gpt-") {
         ZenWireFormat::OpenAiResponses
     } else if bare.starts_with("claude-") {

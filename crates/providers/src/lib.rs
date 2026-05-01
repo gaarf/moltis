@@ -25,9 +25,9 @@ pub mod openai;
 #[cfg(feature = "provider-openai-codex")]
 pub mod openai_codex;
 pub mod openai_compat;
+pub mod opencode_zen;
 pub mod registry;
 pub mod ws_pool;
-pub mod opencode_zen;
 
 #[cfg(test)]
 pub mod contract;

@@ -1102,9 +1102,12 @@ impl ProviderRegistry {
         if !config.is_enabled("opencode-zen") {
             return;
         }
-        let Some(key) =
-            resolve_api_key(config, "opencode-zen", "OPENCODE_ZEN_API_KEY", env_overrides)
-        else {
+        let Some(key) = resolve_api_key(
+            config,
+            "opencode-zen",
+            "OPENCODE_ZEN_API_KEY",
+            env_overrides,
+        ) else {
             return;
         };
 
