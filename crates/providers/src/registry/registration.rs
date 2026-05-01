@@ -135,6 +135,58 @@ impl ProviderRegistry {
             }
         }
 
+        // ── OpenCode Zen builtin ──────────────────────────────────────
+        if let Some(models) = fetched.get("opencode-zen")
+            && config.is_enabled("opencode-zen")
+            && let Some(key) = resolve_api_key(
+                config,
+                "opencode-zen",
+                "OPENCODE_ZEN_API_KEY",
+                env_overrides,
+            )
+        {
+            let base_url = config
+                .get("opencode-zen")
+                .and_then(|e| e.base_url.clone())
+                .or_else(|| env_value(env_overrides, "OPENCODE_ZEN_BASE_URL"))
+                .unwrap_or_else(|| opencode_zen::OPENCODE_ZEN_DEFAULT_BASE_URL.into());
+            let alias = config.get("opencode-zen").and_then(|e| e.alias.clone());
+            let provider_label = alias.unwrap_or_else(|| "opencode-zen".into());
+            let global_cw = self.global_cw_overrides.clone();
+            let provider_cw = config
+                .get("opencode-zen")
+                .map(|e| extract_cw_overrides(&e.model_overrides))
+                .unwrap_or_default();
+
+            for model in models {
+                if self.has_provider_model(&provider_label, &model.id) {
+                    continue;
+                }
+                let provider: Arc<dyn LlmProvider> =
+                    Arc::new(opencode_zen::ZenProvider::new(
+                        key.clone(),
+                        model.id.clone(),
+                        base_url.clone(),
+                        global_cw.clone(),
+                        provider_cw.clone(),
+                    ));
+                self.register(
+                    ModelInfo {
+                        id: model.id.clone(),
+                        provider: provider_label.clone(),
+                        display_name: model.display_name.clone(),
+                        created_at: model.created_at,
+                        recommended: model.recommended,
+                        capabilities: model
+                            .capabilities
+                            .unwrap_or_else(|| ModelCapabilities::infer(&model.id)),
+                    },
+                    provider,
+                );
+                added += 1;
+            }
+        }
+
         // ── OpenAI-compatible providers ───────────────────────────────
         for def in OPENAI_COMPAT_PROVIDERS {
             let Some(models) = fetched.get(def.config_name) else {
